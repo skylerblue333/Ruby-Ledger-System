@@ -1,12 +1,34 @@
-name: CI
-on: [push, pull_request]
+name: ruby-ledger-ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
         with:
-          python-version: '3.11'
-      - run: pip install -r requirements.txt
-      - run: pytest tests/ -v
+          ruby-version: '3.3'
+      - name: Syntax
+        run: |
+          ruby -c lib/sky_ledger.rb
+          ruby -c bin/sky-ledger
+          ruby -c test/test_ledger.rb
+      - name: Tests
+        run: ruby -Ilib:test test/test_ledger.rb
+      - name: CLI smoke
+        run: |
+          printf '%s' '{"id":"smoke-1","currency":"USD","occurred_at":"2026-08-24T12:00:00Z","entries":[{"account":"cash","amount_minor":100},{"account":"revenue","amount_minor":-100}]}' | ruby bin/sky-ledger | grep '"cash"'
+      - name: Build image
+        run: docker build -t sky-ruby-ledger:ci .
+      - name: Verify non-root image
+        run: test "$(docker run --rm --entrypoint id sky-ruby-ledger:ci -u)" != "0"
+      - name: Container smoke
+        run: |
+          printf '%s' '{"id":"container-1","currency":"USD","occurred_at":"2026-08-24T12:00:00Z","entries":[{"account":"cash","amount_minor":100},{"account":"revenue","amount_minor":-100}]}' | docker run --rm -i sky-ruby-ledger:ci | grep '"container-1"'
