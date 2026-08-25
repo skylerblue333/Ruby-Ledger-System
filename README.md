@@ -1,44 +1,64 @@
-<!-- PORTFOLIO PROJECT PROFILE: maintained by the repository owner -->
+# Sky Ledger Ruby Core
 
-## Project profile and code-audit snapshot
+A focused Ruby 3.3 double-entry ledger primitive for validating and replaying balanced transaction batches. This repository is an engineering-beta accounting core, not a payment processor, bank ledger, or production financial system.
 
-**What this is:** **Ruby-Ledger-System** is a public repository described as: “Enterprise-grade ledger system implementation in Ruby. #SkyCoin4444 #AI #Blockchain #DevOps #Innovation” Its dominant language signals are **Python (4 files)**.
+## Implemented behavior
 
-**Why it has value:** Its value is best understood through the implementation evidence currently present in the repository: **18 tracked files** were observed in the shallow audit, with the source structure and existing documentation providing the project’s specific context. This README does not treat a prototype, experiment, or archive as a production system without supporting evidence.
+- Native Ruby implementation with no application runtime dependencies.
+- Double-entry invariant: every transaction must contain 2–100 non-zero entries whose minor-unit amounts sum exactly to zero.
+- Integer minor-unit money representation; no floating-point accounting math.
+- Three-letter uppercase currency validation.
+- Bounded account and transaction identifiers.
+- ISO-8601 transaction timestamps.
+- Duplicate transaction-ID rejection.
+- Deterministic SHA-256 digest of normalized transaction content.
+- Deterministic transaction ordering and per-account/currency balance aggregation.
+- JSON CLI for validating and replaying one transaction or a batch.
+- Automated syntax, invariant, CLI, Docker, and non-root runtime checks.
 
-**Implementation evidence:** 2 test-related file(s) detected; 2 dependency or package manifest(s) detected; 2 build/CI/infrastructure signal(s) detected; and 3 documentation or governance file(s) detected. Test filenames observed include `tests/__init__.py`, `tests/test_main.py`. Dependency or package files include `package.json`, `requirements.txt`. Build, CI, or infrastructure signals include `Dockerfile`, `.github/workflows/ci.yml`.
+## Example
 
-**Current status:** The repository is tracked on the `main` branch. The existing source tree, configuration, tests, workflows, and documentation remain authoritative for supported behavior and maturity. A code audit is not a production-readiness certification, and the presence of a test or workflow file does not establish that all checks pass.
+```bash
+cat <<'JSON' | ruby bin/sky-ledger
+[
+  {
+    "id": "sale-001",
+    "currency": "USD",
+    "occurred_at": "2026-08-24T12:00:00Z",
+    "entries": [
+      { "account": "cash", "amount_minor": 2500 },
+      { "account": "revenue", "amount_minor": -2500 }
+    ]
+  }
+]
+JSON
+```
 
-**Relationship to the wider portfolio:** This repository is one focused component of the broader Skyler Blue Spillers portfolio across AI, software engineering, cloud and DevOps, cybersecurity, blockchain, finance, education, social systems, and creative work. It may provide a service boundary, implementation pattern, experiment, archive, or reusable idea for related repositories. Treat repositories as technical dependencies only where documented interfaces and verified project requirements support that relationship.
+The CLI returns normalized transaction metadata and resulting balances. Invalid JSON exits with code 2; ledger validation failures exit with code 3.
 
-**Quality and security note:** No obvious secret-like pattern was detected by the limited static scan; this is not a substitute for a security audit. No TODO/FIXME marker was detected in the scanned text files.
+## Verification
 
----
+```bash
+ruby -c lib/sky_ledger.rb
+ruby -c bin/sky-ledger
+ruby -Ilib:test test/test_ledger.rb
+docker build -t sky-ruby-ledger .
+```
 
-# Ruby Ledger System
+CI additionally exercises the CLI and verifies that the container runs as a non-root user.
 
-![GitHub stars](https://img.shields.io/github/stars/skylerblue333/Ruby-Ledger-System?style=flat-square)
-![GitHub license](https://img.shields.io/github/license/skylerblue333/Ruby-Ledger-System?style=flat-square)
+## Architecture
 
-## 🌟 Overview
-**Ruby-Ledger-System** is a professional-grade project within the **SkyCoin4444** ecosystem. It focuses on delivering high-value solutions in the domain of **Python**.
+`SkyLedger::Ledger` owns process-local journal state. `post` validates and normalizes a transaction before atomically applying all of its entries to in-memory balances. Transaction digests are deterministic metadata, not signatures. `bin/sky-ledger` creates one ledger, replays JSON input, and emits a machine-readable result.
 
-## 🚀 Key Features
-- **Scalable Architecture**: Designed for enterprise-level growth and performance.
-- **Modern Standards**: Implements best practices for clean code and maintainability.
-- **Robust Integration**: Built to work seamlessly within modern cloud-native environments.
+## SKYCOIN4444 integration
 
-## 🛠️ Technology Stack
-- **Primary Domain**: Python
-- **Ecosystem**: SkyCoin4444 Digital Platform
+This component can serve as a deterministic accounting-domain library or validation sidecar for future SKYCOIN4444 finance/marketplace workflows. A durable integration should wrap the core with a transactional datastore, idempotency persistence, authorization, audit controls, reconciliation, backup/restore, and operational observability rather than treating this in-memory CLI as a financial system of record.
 
-## 📂 Structure
-The project is organized into a modular structure to ensure clarity and ease of development.
+## Status and limitations
 
-## 👨‍💻 Author
-**Skyler Blue Spillers**
-*Professional Chess Player & Software Engineer*
+**Status: Engineering Beta.** Automated code/container verification is being established; deployment is not verified.
 
----
-*Powered by SkyCoin4444*
+This repository does **not** provide durable storage, database transactions, cross-process locking, payment-provider integration, settlement, PCI handling, taxation, FX conversion, authorization/RBAC, tenant isolation, cryptographic signing, tamper-evident persistent journals, reconciliation workflows, HA, or production deployment. It should not be described as GA, production-ready, or financially compliant without separate evidence.
+
+See `SECURITY.md` and `CHANGELOG.md` for boundaries and productization history.
