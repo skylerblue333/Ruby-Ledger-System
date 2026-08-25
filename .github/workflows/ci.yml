@@ -18,10 +18,14 @@ jobs:
       - name: Syntax
         run: |
           ruby -c lib/sky_ledger.rb
+          ruby -c lib/sky_ledger/integration.rb
           ruby -c bin/sky-ledger
           ruby -c test/test_ledger.rb
+          ruby -c test/test_integration.rb
       - name: Tests
-        run: ruby -Ilib:test test/test_ledger.rb
+        run: |
+          ruby -Ilib:test test/test_ledger.rb
+          ruby -Ilib:test test/test_integration.rb
       - name: CLI smoke
         run: |
           printf '%s' '{"id":"smoke-1","currency":"USD","occurred_at":"2026-08-24T12:00:00Z","entries":[{"account":"cash","amount_minor":100},{"account":"revenue","amount_minor":-100}]}' | ruby bin/sky-ledger | grep '"cash"'
