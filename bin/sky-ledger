@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "json"
+require_relative "../lib/sky_ledger"
+
+input = ARGF.read
+payload = JSON.parse(input)
+transactions = payload.is_a?(Array) ? payload : [payload]
+ledger = SkyLedger::Ledger.new
+
+posted = transactions.map do |transaction|
+  normalized = ledger.post(transaction)
+  {
+    "id" => normalized.id,
+    "currency" => normalized.currency,
+    "occurred_at" => normalized.occurred_at.utc.iso8601(6),
+    "digest" => normalized.digest
+  }
+end
+
+puts JSON.pretty_generate({ "transactions" => posted, "balances" => ledger.balances })
+rescue JSON::ParserError => error
+  warn JSON.generate({ "error" => "invalid_json", "detail" => error.message })
+  exit 2
+rescue SkyLedger::Error => error
+  warn JSON.generate({ "error" => error.class.name.split("::").last, "detail" => error.message })
+  exit 3
